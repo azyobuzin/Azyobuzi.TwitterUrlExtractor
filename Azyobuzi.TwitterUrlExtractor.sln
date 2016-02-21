@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.24720.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Azyobuzi.TwitterUrlExtractor", "Azyobuzi.TwitterUrlExtractor\Azyobuzi.TwitterUrlExtractor.csproj", "{B7B741B6-F9CF-4514-B322-5E11FAD5FF66}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Azyobuzi.TwitterUrlExtractor.Test", "Azyobuzi.TwitterUrlExtractor.Test\Azyobuzi.TwitterUrlExtractor.Test.csproj", "{6CAD4E90-1EA1-4411-8E93-E2DE83C4EC98}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B7B741B6-F9CF-4514-B322-5E11FAD5FF66}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7B741B6-F9CF-4514-B322-5E11FAD5FF66}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7B741B6-F9CF-4514-B322-5E11FAD5FF66}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7B741B6-F9CF-4514-B322-5E11FAD5FF66}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6CAD4E90-1EA1-4411-8E93-E2DE83C4EC98}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6CAD4E90-1EA1-4411-8E93-E2DE83C4EC98}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6CAD4E90-1EA1-4411-8E93-E2DE83C4EC98}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6CAD4E90-1EA1-4411-8E93-E2DE83C4EC98}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
