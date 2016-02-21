@@ -249,8 +249,7 @@ namespace Azyobuzi.TwitterUrlExtractor
             if (dotIndex == startIndex)
             {
                 // 開始位置にいきなり . があったら正しい URL なわけないでしょ
-                startIndex = dotIndex + 1;
-                goto Start;
+                goto GoToNextToDot;
             }
 
             // dotIndex の位置
@@ -323,8 +322,7 @@ namespace Azyobuzi.TwitterUrlExtractor
                 }
                 else
                 {
-                    startIndex = dotIndex + 1;
-                    goto Start;
+                    goto GoToNextToDot;
                 }
             }
 
