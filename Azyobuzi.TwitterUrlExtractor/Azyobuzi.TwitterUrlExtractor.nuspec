@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>Azyobuzi.TwitterUrlExtractor</id>
+    <version>$version$</version>
+    <title>Azyobuzi.TwitterUrlExtractor</title>
+    <authors>azyobuzin</authors>
+    <owners>azyobuzin</owners>
+    <licenseUrl>https://github.com/azyobuzin/Azyobuzi.TwitterUrlExtractor/blob/master/LICENSE.md</licenseUrl>
+    <projectUrl>https://github.com/azyobuzin/Azyobuzi.TwitterUrlExtractor</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Fast URL extractor for Twitter client.</description>
+    <copyright>Copyright (C) 2016 azyobuzin</copyright>
+    <tags>twitter</tags>
+  </metadata>
+</package>

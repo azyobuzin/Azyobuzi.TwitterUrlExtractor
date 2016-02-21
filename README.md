@@ -26,3 +26,8 @@ example2.com
 twitter.com/abcde
 */
 ```
+
+# Install
+```
+PM> Install-Package Azyobuzi.TwitterUrlExtractor
+```
