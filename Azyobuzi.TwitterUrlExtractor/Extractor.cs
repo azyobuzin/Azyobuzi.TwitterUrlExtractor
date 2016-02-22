@@ -312,9 +312,9 @@ namespace Azyobuzi.TwitterUrlExtractor
                     lastUnicodeCharIndex = i;
             }
 
-            if (lastUnicodeCharIndex != -1 && !hasScheme)
+            if (!hasScheme && lastUnicodeCharIndex != -1)
             {
-                if (IsPrecedingChar(text[lastUnicodeCharIndex]))
+                if (lastUnicodeCharIndex != dotIndex - 1 && IsPrecedingChar(text[lastUnicodeCharIndex]))
                 {
                     // Unicode文字を含まないようにして救済
                     precedingIndex = lastUnicodeCharIndex;

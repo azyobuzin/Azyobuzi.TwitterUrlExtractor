@@ -16,7 +16,7 @@ namespace Azyobuzi.TwitterUrlExtractor.Test
             foreach (var test in LoadTests())
             {
                 Console.WriteLine(test.Description);
-                var result = extractor.Extract(test.Text).ConvertAll(x => test.Text.Substring(x.StartIndex, x.Length));
+                var result = extractor.Extract(test.Text).Select(x => test.Text.Substring(x.StartIndex, x.Length));
                 if (!result.SequenceEqual(test.Expected))
                 {
                     Debugger.Break();
