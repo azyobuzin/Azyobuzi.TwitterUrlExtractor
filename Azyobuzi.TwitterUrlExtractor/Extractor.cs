@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 
 namespace Azyobuzi.TwitterUrlExtractor
 {
-    public sealed class Extractor
+    public class Extractor
     {
         private enum TldType
         {
@@ -14,27 +15,97 @@ namespace Azyobuzi.TwitterUrlExtractor
             SpecialCcTld
         }
 
-        private readonly Dictionary<string, TldType> _tldDictionary = new Dictionary<string, TldType>(StringComparer.OrdinalIgnoreCase);
+        private struct TldInfo
+        {
+            public string Value;
+            public TldType Type;
+
+            public TldInfo(string value, TldType type)
+            {
+                this.Value = value;
+                this.Type = type;
+            }
+        }
+
+        private class TldInfoComparer : IComparer<TldInfo>, IEqualityComparer<TldInfo>
+        {
+            public int Compare(TldInfo x, TldInfo y)
+            {
+                var xlen = x.Value.Length;
+                var ylen = y.Value.Length;
+
+                for (var i = 0; i < Math.Min(xlen, ylen); i++)
+                {
+                    var c = x.Value[i].CompareTo(y.Value[i]);
+                    if (c != 0) return c;
+                }
+
+                // 長い方が先に来るように
+                return xlen > ylen
+                    ? -1
+                    : xlen < ylen
+                        ? 1
+                        : 0;
+            }
+
+            public bool Equals(TldInfo x, TldInfo y)
+            {
+                return x.Value.Equals(y.Value, StringComparison.Ordinal);
+            }
+
+            public int GetHashCode(TldInfo obj)
+            {
+                return obj.Value.GetHashCode();
+            }
+        }
+
+        private readonly Dictionary<char, ArraySegment<TldInfo>> _tldFirstCharDic = new Dictionary<char, ArraySegment<TldInfo>>();
         private int _longestTldLength;
         private int _shortestTldLength;
 
+        /// <param name="gTlds">gTLDのリスト。すべて小文字である必要があります（チェックされません）。</param>
+        /// <param name="ccTlds">ccTLDのリスト。すべて小文字である必要があります（チェックされません）。</param>
+        /// <param name="specialCcTlds">gTLDのように扱うccTLDのリスト。すべて小文字である必要があります（チェックされません）。</param>
         public Extractor(IEnumerable<string> gTlds, IEnumerable<string> ccTlds, IEnumerable<string> specialCcTlds)
         {
-            foreach (var x in gTlds) this.AddTld(x, TldType.GTld);
-            foreach (var x in ccTlds) this.AddTld(x, TldType.CcTld);
-            foreach (var x in specialCcTlds) this.AddTld(x, TldType.SpecialCcTld);
+            // ccTlds より specialCcTlds が優先されるように
+            var comparer = new TldInfoComparer();
+            var tlds = specialCcTlds.Select(x => new TldInfo(x, TldType.SpecialCcTld))
+                .Union(ccTlds.Select(x => new TldInfo(x, TldType.CcTld)), comparer)
+                .Concat(gTlds.Select(x => new TldInfo(x, TldType.GTld)));
+            var tldList = new List<TldInfo>();
+            foreach (var x in tlds)
+            {
+                if (x.Value.Length > this._longestTldLength)
+                    this._longestTldLength = x.Value.Length;
+                else if (x.Value.Length < this._shortestTldLength)
+                    this._shortestTldLength = x.Value.Length;
+
+                tldList.Add(x);
+            }
+
+            var tldArray = tldList.ToArray();
+            Array.Sort(tldArray, comparer);
+
+            var startIndex = 0;
+            var firstChar = default(char);
+            while (startIndex < tldArray.Length)
+            {
+                firstChar = tldArray[startIndex].Value[0];
+                var i = startIndex + 1;
+                for (; i < tldArray.Length && tldArray[i].Value[0] == firstChar; i++) { }
+                this._tldFirstCharDic.Add(firstChar, new ArraySegment<TldInfo>(tldArray, startIndex, i - startIndex));
+                startIndex = i;
+            }
         }
 
         public Extractor() : this(DefaultTlds.GTlds, DefaultTlds.CTlds, DefaultTlds.SpecialCcTlds) { }
 
-        private void AddTld(string tld, TldType type)
+        private static char ToLower(char c)
         {
-            if (tld.Length > this._longestTldLength)
-                this._longestTldLength = tld.Length;
-            else if (tld.Length < this._shortestTldLength)
-                this._shortestTldLength = tld.Length;
-
-            this._tldDictionary[tld] = type;
+            return c >= 'A' && c <= 'Z'
+                ? (char)(c + 32) // - 'A' + 'a' ってやってもコンパイル時に展開してくれないんですがこれは…
+                : c;
         }
 
         private static bool IsValidDomainChar(char c)
@@ -237,6 +308,39 @@ namespace Azyobuzi.TwitterUrlExtractor
             }
         }
 
+        private static bool TryGetTld(Dictionary<char, ArraySegment<TldInfo>> dic, string text, int index, int maxLen, out TldInfo tld)
+        {
+            ArraySegment<TldInfo> seg;
+            if (dic.TryGetValue(ToLower(text[index]), out seg))
+            {
+                var segEnd = seg.Offset + seg.Count;
+                for (var i = seg.Offset; i < segEnd; i++)
+                {
+                    var info = seg.Array[i];
+                    var tldLen = info.Value.Length;
+                    var nextIndex = index + tldLen;
+
+                    // 次の文字が英数@ならばダメ
+                    if (tldLen > maxLen || (text.Length != nextIndex && IsAlnumAt(text[nextIndex])))
+                        continue;
+
+                    for (var j = 1; j < tldLen; j++)
+                    {
+                        if (ToLower(text[index + j]) != info.Value[j])
+                            goto NextTld;
+                    }
+
+                    tld = info;
+                    return true;
+
+                    NextTld:
+                    continue;
+                }
+            }
+            tld = default(TldInfo);
+            return false;
+        }
+
         private void Extract(string text, int startIndex, List<EntityInfo> result)
         {
             var dots = new MiniList<DotSplitInfo>();
@@ -378,7 +482,7 @@ namespace Azyobuzi.TwitterUrlExtractor
             }
 
             // TLD 検証
-            TldType tldType;
+            TldInfo tld;
             int dotCount;
             for (var i = dots.Count - 1; i >= 0; i--)
             {
@@ -387,23 +491,20 @@ namespace Azyobuzi.TwitterUrlExtractor
                 if (len < this._shortestTldLength) continue;
                 if (len > this._longestTldLength) len = this._longestTldLength;
 
-                for (; len >= 1; len--)
+                if (TryGetTld(this._tldFirstCharDic, text, s.DotIndexPlusOne, len, out tld))
                 {
-                    nextIndex = s.DotIndexPlusOne + len;
-                    if ((nextIndex == text.Length || !IsAlnumAt(text[nextIndex]))
-                        && this._tldDictionary.TryGetValue(text.Substring(s.DotIndexPlusOne, len), out tldType))
-                    {
-                        dotCount = i + 1;
-                        goto TldDecided;
-                    }
+                    dotCount = i + 1;
+                    nextIndex = s.DotIndexPlusOne + tld.Value.Length;
+                    goto TldDecided;
                 }
+
             }
 
             goto GoToNextToDot;
 
             TldDecided:
             // ccTLD のサブドメインなしはスキーム必須
-            if (!hasScheme && tldType == TldType.CcTld
+            if (!hasScheme && tld.Type == TldType.CcTld
                 && (dotCount == 1 && (nextIndex >= text.Length || text[nextIndex] != '/')))
                 goto GoToNextIndex;
 
