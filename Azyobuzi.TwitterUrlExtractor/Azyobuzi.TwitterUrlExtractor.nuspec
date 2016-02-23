@@ -9,7 +9,7 @@
     <licenseUrl>https://github.com/azyobuzin/Azyobuzi.TwitterUrlExtractor/blob/master/LICENSE.md</licenseUrl>
     <projectUrl>https://github.com/azyobuzin/Azyobuzi.TwitterUrlExtractor</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>Fast URL extractor for Twitter client.</description>
+    <description>Fast URL extractor for Twitter clients.</description>
     <copyright>Copyright (C) 2016 azyobuzin</copyright>
     <tags>twitter</tags>
   </metadata>
