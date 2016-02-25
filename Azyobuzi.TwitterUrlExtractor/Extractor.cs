@@ -37,13 +37,168 @@ namespace Azyobuzi.TwitterUrlExtractor
             this._tldDictionary[tld] = type;
         }
 
+        [Flags]
+        private enum CharType
+        {
+            None = 0,
+            Control = 1,
+            Alphabet = 1 << 1,
+            Number = 1 << 2,
+            Punctuation = 1 << 3,
+            At = 1 << 4,
+            Alnum = Alphabet | Number,
+            AlnumAt = Alnum | At,
+            NotPrecedingSymbol = 1 << 5,
+            NotPrecedingChar = AlnumAt | NotPrecedingSymbol,
+            PathEndingSymbol = 1 << 6,
+            PathEndingChar = Alnum | PathEndingSymbol,
+            PathSymbol = 1 << 7,
+            PathChar = AlnumAt | PathSymbol | PathEndingChar,
+            QueryEndingSymbol = 1 << 8,
+            QueryEndingChar = Alnum | QueryEndingSymbol,
+            QuerySymbol = 1 << 9
+        }
+
+        private static readonly CharType[] AsciiTable =
+        {
+            CharType.Control, // NUL
+            CharType.Control, // SOH
+            CharType.Control, // STX
+            CharType.Control, // ETX
+            CharType.Control, // EOX
+            CharType.Control, // ENQ
+            CharType.Control, // ACK
+            CharType.Control, // BEL
+            CharType.Control, // BS
+            CharType.Control, // HT
+            CharType.Control, // LF
+            CharType.Control, // VT
+            CharType.Control, // FF
+            CharType.Control, // CR
+            CharType.Control, // SO
+            CharType.Control, // SI
+            CharType.Control, // DLE
+            CharType.Control, // DC1
+            CharType.Control, // DC2
+            CharType.Control, // DC3
+            CharType.Control, // DC4
+            CharType.Control, // NAK
+            CharType.Control, // SYN
+            CharType.Control, // ETB
+            CharType.Control, // CAN
+            CharType.Control, // EM
+            CharType.Control, // SUB
+            CharType.Control, // ESC
+            CharType.Control, // FS
+            CharType.Control, // GS
+            CharType.Control, // RS
+            CharType.Control, // US
+            CharType.Control, // Space
+            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // !
+            CharType.Punctuation | CharType.PathEndingSymbol, // "
+            CharType.Punctuation | CharType.NotPrecedingSymbol | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.QueryEndingSymbol, // #
+            CharType.Punctuation | CharType.NotPrecedingSymbol | CharType.PathSymbol | CharType.QuerySymbol, // $
+            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // %
+            CharType.Punctuation | CharType.PathSymbol | CharType.QueryEndingSymbol, // &
+            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // '
+            CharType.Punctuation | CharType.QuerySymbol, // (
+            CharType.Punctuation | CharType.QuerySymbol, // )
+            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // *
+            CharType.Punctuation | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.QuerySymbol, // +
+            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // ,
+            CharType.Punctuation | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.QuerySymbol, // -
+            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // .
+            CharType.Punctuation | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.QueryEndingSymbol, // /
+            CharType.Number, // 0
+            CharType.Number, // 1
+            CharType.Number, // 2
+            CharType.Number, // 3
+            CharType.Number, // 4
+            CharType.Number, // 5
+            CharType.Number, // 6
+            CharType.Number, // 7
+            CharType.Number, // 8
+            CharType.Number, // 9
+            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // :
+            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // ;
+            CharType.Punctuation, // <
+            CharType.Punctuation | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.QueryEndingSymbol, // =
+            CharType.Punctuation, // >
+            CharType.Punctuation | CharType.QuerySymbol, // ?
+            CharType.Punctuation | CharType.At | CharType.QuerySymbol, // @
+            CharType.Alphabet, // A
+            CharType.Alphabet, // B
+            CharType.Alphabet, // C
+            CharType.Alphabet, // D
+            CharType.Alphabet, // E
+            CharType.Alphabet, // F
+            CharType.Alphabet, // G
+            CharType.Alphabet, // H
+            CharType.Alphabet, // I
+            CharType.Alphabet, // J
+            CharType.Alphabet, // K
+            CharType.Alphabet, // L
+            CharType.Alphabet, // M
+            CharType.Alphabet, // N
+            CharType.Alphabet, // O
+            CharType.Alphabet, // P
+            CharType.Alphabet, // Q
+            CharType.Alphabet, // R
+            CharType.Alphabet, // S
+            CharType.Alphabet, // T
+            CharType.Alphabet, // U
+            CharType.Alphabet, // V
+            CharType.Alphabet, // W
+            CharType.Alphabet, // X
+            CharType.Alphabet, // Y
+            CharType.Alphabet, // Z
+            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // [
+            CharType.Punctuation, // \
+            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // ]
+            CharType.Punctuation, // ^
+            CharType.Punctuation | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.QueryEndingSymbol, // _
+            CharType.Punctuation, // `
+            CharType.Alphabet, // a
+            CharType.Alphabet, // b
+            CharType.Alphabet, // c
+            CharType.Alphabet, // d
+            CharType.Alphabet, // e
+            CharType.Alphabet, // f
+            CharType.Alphabet, // g
+            CharType.Alphabet, // h
+            CharType.Alphabet, // i
+            CharType.Alphabet, // j
+            CharType.Alphabet, // k
+            CharType.Alphabet, // l
+            CharType.Alphabet, // m
+            CharType.Alphabet, // n
+            CharType.Alphabet, // o
+            CharType.Alphabet, // p
+            CharType.Alphabet, // q
+            CharType.Alphabet, // r
+            CharType.Alphabet, // s
+            CharType.Alphabet, // t
+            CharType.Alphabet, // u
+            CharType.Alphabet, // v
+            CharType.Alphabet, // w
+            CharType.Alphabet, // x
+            CharType.Alphabet, // y
+            CharType.Alphabet, // z
+            CharType.Punctuation, // {
+            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // |
+            CharType.Punctuation, // }
+            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // ~
+            CharType.Control // DEL
+        };
+
+        private const int AsciiTableLength = 128;
+
         private static bool IsValidDomainChar(char c)
         {
-            if (c == '-' || c == '_')
-                return true;
-
-            if ((c >= '!' && c <= '/') || (c >= ':' && c <= '@') || (c >= '[' && c <= '`') || (c >= '{' && c <= '~'))
-                return false;
+            if (c < AsciiTableLength)
+            {
+                return c == '-' || c == '_' || (AsciiTable[c] & (CharType.Control | CharType.Punctuation)) == 0;
+            }
 
             switch (CharUnicodeInfo.GetUnicodeCategory(c))
             {
@@ -68,8 +223,7 @@ namespace Azyobuzi.TwitterUrlExtractor
 
         private static bool IsAccentChar(char c)
         {
-            return (c >= '\u00c0' && c <= '\u00d6') || (c >= '\u00d8' && c <= '\u00f6') || (c >= '\u00f8' && c <= '\u00ff')
-                || (c >= '\u0100' && c <= '\u024f')
+            return (c >= '\u00c0' && c <= '\u00d6') || (c >= '\u00d8' && c <= '\u00f6') || (c >= '\u00f8' && c <= '\u024f')
                 || c == '\u0253' || c == '\u0254' || c == '\u0256' || c == '\u0257' || c == '\u0259' || c == '\u025b' || c == '\u0263' || c == '\u0268' || c == '\u026f' || c == '\u0272' || c == '\u0289' || c == '\u028b'
                 || c == '\u02bb'
                 || (c >= '\u0300' && c <= '\u036f')
@@ -83,45 +237,45 @@ namespace Azyobuzi.TwitterUrlExtractor
 
         private static bool IsNum(char c)
         {
-            return c >= '0' && c <= '9';
+            return c < AsciiTableLength && (AsciiTable[c] & CharType.Number) != 0;
         }
 
         private static bool IsAlnumAt(char c)
         {
-            return (c >= '@' && c <= 'Z') || (c >= 'a' && c <= 'z') || IsNum(c);
+            return c < AsciiTableLength && (AsciiTable[c] & CharType.AlnumAt) != 0;
         }
 
         private static bool IsAlnum(char c)
         {
-            return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || IsNum(c);
+            return c < AsciiTableLength && (AsciiTable[c] & CharType.Alnum) != 0;
         }
 
         private static bool IsPrecedingChar(char c)
         {
-            var b = c == '＠' || c == '$' || c == '#' || c == '＃'
-                || IsAlnumAt(c) || (c >= '\u202A' && c <= '\u202E');
-            return !b;
+            return c < AsciiTableLength
+                ? (AsciiTable[c] & CharType.NotPrecedingChar) == 0
+                : !(c == '＠' || (c >= '\u202A' && c <= '\u202E'));
         }
 
         private static bool IsCyrillicScript(char c)
         {
-            return (c >= '\u0400' && c <= '\u04FF') || (c >= '\u0500' && c <= '\u052F')
+            return (c >= '\u0400' && c <= '\u052F')
                 || (c >= '\u2DE0' && c <= '\u2DFF') || (c >= '\uA640' && c <= '\uA69F')
                 || c == '\u1D2B' || c == '\u1D78' || c == '\uFE2E' || c == '\uFE2F';
         }
 
         private static bool IsPathEndingChar(char c)
         {
-            return IsAlnum(c) || c == '=' || c == '_' || c == '#' || c == '/' || c == '-' || c == '+' || c == '"'
-                || IsCyrillicScript(c) || IsAccentChar(c);
+            return c < AsciiTableLength
+                ? (AsciiTable[c] & CharType.PathEndingChar) != 0
+                : IsCyrillicScript(c) || IsAccentChar(c);
         }
 
         private static bool IsPathChar(char c)
         {
-            return c == '!' || (c >= '#' && c <= '\'') || (c >= '*' && c <= ';')
-               || c == '=' || (c >= '@' && c <= '[') || (c >= 'a' && c <= 'z')
-               || c == ']' || c == '_' && c == '|' || c == '~'
-               || IsCyrillicScript(c) || IsAccentChar(c);
+            return c < AsciiTableLength
+                ? (AsciiTable[c] & CharType.PathChar) != 0
+                : IsCyrillicScript(c) || IsAccentChar(c);
         }
 
         private static int EatPath(string text, int startIndex)
@@ -194,14 +348,12 @@ namespace Azyobuzi.TwitterUrlExtractor
 
         private static bool IsQueryEndingChar(char c)
         {
-            return (c >= '/' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
-                || c == '_' || c == '&' || c == '=' || c == '#';
+            return (AsciiTable[c] & CharType.QueryEndingChar) != 0;
         }
 
         private static bool IsQueryCharWithoutEnding(char c)
         {
-            return c == '!' || (c >= '#' && c <= ';') || c == '=' || (c >= '?' && c <= '[')
-                || c == ']' || c == '|' || c == '~';
+            return (AsciiTable[c] & CharType.QuerySymbol) != 0;
         }
 
         private static int EatQuery(string text, int startIndex)
@@ -211,6 +363,8 @@ namespace Azyobuzi.TwitterUrlExtractor
             for (var i = startIndex; i < text.Length; i++)
             {
                 var c = text[i];
+
+                if (c >= AsciiTableLength) break;
 
                 if (IsQueryEndingChar(c))
                 {

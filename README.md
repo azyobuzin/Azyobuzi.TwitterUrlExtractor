@@ -1,7 +1,7 @@
 # Azyobuzi.TwitterUrlExtractor
 Fast URL extractor for Twitter clients.
 
-17x faster on average than [twitter-text-cs](https://github.com/niltz/twitter-text-cs).
+22x faster on average than [twitter-text-cs](https://github.com/niltz/twitter-text-cs).
 
 # How to use
 ```csharp
