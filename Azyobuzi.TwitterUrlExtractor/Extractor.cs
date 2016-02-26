@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 
 namespace Azyobuzi.TwitterUrlExtractor
 {
@@ -41,74 +40,72 @@ namespace Azyobuzi.TwitterUrlExtractor
         private enum CharType
         {
             None = 0,
-            Control = 1,
-            Alphabet = 1 << 1,
-            Number = 1 << 2,
-            Punctuation = 1 << 3,
-            At = 1 << 4,
+            Alphabet = 1,
+            Number = 1 << 1,
+            At = 1 << 2,
             Alnum = Alphabet | Number,
             AlnumAt = Alnum | At,
-            NotPrecedingSymbol = 1 << 5,
+            NotPrecedingSymbol = 1 << 3,
             NotPrecedingChar = AlnumAt | NotPrecedingSymbol,
-            PathEndingSymbol = 1 << 6,
-            PathEndingChar = Alnum | PathEndingSymbol,
-            PathSymbol = 1 << 7,
-            PathChar = AlnumAt | PathSymbol | PathEndingChar,
-            QueryEndingSymbol = 1 << 8,
-            QueryEndingChar = Alnum | QueryEndingSymbol,
-            QuerySymbol = 1 << 9
+            PathEndingSymbol = 1 << 4,
+            PathSymbol = 1 << 5,
+            QueryEndingSymbol = 1 << 6,
+            QuerySymbol = 1 << 7,
+            LParen = 1 << 8,
+            RParen = 1 << 9,
+            DomainSymbol = 1 << 10
         }
 
         private static readonly CharType[] AsciiTable =
         {
-            CharType.Control, // NUL
-            CharType.Control, // SOH
-            CharType.Control, // STX
-            CharType.Control, // ETX
-            CharType.Control, // EOX
-            CharType.Control, // ENQ
-            CharType.Control, // ACK
-            CharType.Control, // BEL
-            CharType.Control, // BS
-            CharType.Control, // HT
-            CharType.Control, // LF
-            CharType.Control, // VT
-            CharType.Control, // FF
-            CharType.Control, // CR
-            CharType.Control, // SO
-            CharType.Control, // SI
-            CharType.Control, // DLE
-            CharType.Control, // DC1
-            CharType.Control, // DC2
-            CharType.Control, // DC3
-            CharType.Control, // DC4
-            CharType.Control, // NAK
-            CharType.Control, // SYN
-            CharType.Control, // ETB
-            CharType.Control, // CAN
-            CharType.Control, // EM
-            CharType.Control, // SUB
-            CharType.Control, // ESC
-            CharType.Control, // FS
-            CharType.Control, // GS
-            CharType.Control, // RS
-            CharType.Control, // US
-            CharType.Control, // Space
-            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // !
-            CharType.Punctuation | CharType.PathEndingSymbol, // "
-            CharType.Punctuation | CharType.NotPrecedingSymbol | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.QueryEndingSymbol, // #
-            CharType.Punctuation | CharType.NotPrecedingSymbol | CharType.PathSymbol | CharType.QuerySymbol, // $
-            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // %
-            CharType.Punctuation | CharType.PathSymbol | CharType.QueryEndingSymbol, // &
-            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // '
-            CharType.Punctuation | CharType.QuerySymbol, // (
-            CharType.Punctuation | CharType.QuerySymbol, // )
-            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // *
-            CharType.Punctuation | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.QuerySymbol, // +
-            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // ,
-            CharType.Punctuation | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.QuerySymbol, // -
-            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // .
-            CharType.Punctuation | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.QueryEndingSymbol, // /
+            CharType.None, // NUL
+            CharType.None, // SOH
+            CharType.None, // STX
+            CharType.None, // ETX
+            CharType.None, // EOX
+            CharType.None, // ENQ
+            CharType.None, // ACK
+            CharType.None, // BEL
+            CharType.None, // BS
+            CharType.None, // HT
+            CharType.None, // LF
+            CharType.None, // VT
+            CharType.None, // FF
+            CharType.None, // CR
+            CharType.None, // SO
+            CharType.None, // SI
+            CharType.None, // DLE
+            CharType.None, // DC1
+            CharType.None, // DC2
+            CharType.None, // DC3
+            CharType.None, // DC4
+            CharType.None, // NAK
+            CharType.None, // SYN
+            CharType.None, // ETB
+            CharType.None, // CAN
+            CharType.None, // EM
+            CharType.None, // SUB
+            CharType.None, // ESC
+            CharType.None, // FS
+            CharType.None, // GS
+            CharType.None, // RS
+            CharType.None, // US
+            CharType.None, // Space
+            CharType.PathSymbol | CharType.QuerySymbol, // !
+            CharType.None, // "
+            CharType.NotPrecedingSymbol | CharType.PathEndingSymbol | CharType.QueryEndingSymbol, // #
+            CharType.NotPrecedingSymbol | CharType.PathSymbol | CharType.QuerySymbol, // $
+            CharType.PathSymbol | CharType.QuerySymbol, // %
+            CharType.PathSymbol | CharType.QueryEndingSymbol, // &
+            CharType.PathSymbol | CharType.QuerySymbol, // '
+            CharType.QuerySymbol | CharType.LParen, // (
+            CharType.QuerySymbol | CharType.RParen, // )
+            CharType.PathSymbol | CharType.QuerySymbol, // *
+            CharType.PathEndingSymbol | CharType.QuerySymbol, // +
+            CharType.PathSymbol | CharType.QuerySymbol, // ,
+            CharType.PathEndingSymbol | CharType.QuerySymbol | CharType.DomainSymbol, // -
+            CharType.PathSymbol | CharType.QuerySymbol, // .
+            CharType.PathEndingSymbol | CharType.QueryEndingSymbol, // /
             CharType.Number, // 0
             CharType.Number, // 1
             CharType.Number, // 2
@@ -119,13 +116,13 @@ namespace Azyobuzi.TwitterUrlExtractor
             CharType.Number, // 7
             CharType.Number, // 8
             CharType.Number, // 9
-            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // :
-            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // ;
-            CharType.Punctuation, // <
-            CharType.Punctuation | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.QueryEndingSymbol, // =
-            CharType.Punctuation, // >
-            CharType.Punctuation | CharType.QuerySymbol, // ?
-            CharType.Punctuation | CharType.At | CharType.QuerySymbol, // @
+            CharType.PathSymbol | CharType.QuerySymbol, // :
+            CharType.PathSymbol | CharType.QuerySymbol, // ;
+            CharType.None, // <
+            CharType.PathEndingSymbol | CharType.QueryEndingSymbol, // =
+            CharType.None, // >
+            CharType.QuerySymbol, // ?
+            CharType.At | CharType.PathSymbol | CharType.QuerySymbol, // @
             CharType.Alphabet, // A
             CharType.Alphabet, // B
             CharType.Alphabet, // C
@@ -152,12 +149,12 @@ namespace Azyobuzi.TwitterUrlExtractor
             CharType.Alphabet, // X
             CharType.Alphabet, // Y
             CharType.Alphabet, // Z
-            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // [
-            CharType.Punctuation, // \
-            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // ]
-            CharType.Punctuation, // ^
-            CharType.Punctuation | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.QueryEndingSymbol, // _
-            CharType.Punctuation, // `
+            CharType.PathSymbol | CharType.QuerySymbol, // [
+            CharType.None, // \
+            CharType.PathSymbol | CharType.QuerySymbol, // ]
+            CharType.None, // ^
+            CharType.PathEndingSymbol | CharType.QueryEndingSymbol | CharType.DomainSymbol, // _
+            CharType.None, // `
             CharType.Alphabet, // a
             CharType.Alphabet, // b
             CharType.Alphabet, // c
@@ -184,41 +181,23 @@ namespace Azyobuzi.TwitterUrlExtractor
             CharType.Alphabet, // x
             CharType.Alphabet, // y
             CharType.Alphabet, // z
-            CharType.Punctuation, // {
-            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // |
-            CharType.Punctuation, // }
-            CharType.Punctuation | CharType.PathSymbol | CharType.QuerySymbol, // ~
-            CharType.Control // DEL
+            CharType.None, // {
+            CharType.PathSymbol | CharType.QuerySymbol, // |
+            CharType.None, // }
+            CharType.PathSymbol | CharType.QuerySymbol, // ~
+            CharType.None // DEL
         };
 
         private const int AsciiTableLength = 128;
 
         private static bool IsValidDomainChar(char c)
         {
-            if (c < AsciiTableLength)
-            {
-                return c == '-' || c == '_' || (AsciiTable[c] & (CharType.Control | CharType.Punctuation)) == 0;
-            }
-
-            switch (CharUnicodeInfo.GetUnicodeCategory(c))
-            {
-                case UnicodeCategory.Control:
-                // Punct
-                case UnicodeCategory.ClosePunctuation:
-                case UnicodeCategory.ConnectorPunctuation:
-                case UnicodeCategory.DashPunctuation:
-                case UnicodeCategory.FinalQuotePunctuation:
-                case UnicodeCategory.InitialQuotePunctuation:
-                case UnicodeCategory.OpenPunctuation:
-                case UnicodeCategory.OtherPunctuation:
-                // Separator(Z)
-                case UnicodeCategory.LineSeparator:
-                case UnicodeCategory.ParagraphSeparator:
-                case UnicodeCategory.SpaceSeparator:
-                    return false;
-                default:
-                    return true;
-            }
+            return c < AsciiTableLength
+                ? (AsciiTable[c] & (CharType.Alnum | CharType.DomainSymbol)) != 0
+                : !(
+                    (c >= '\u2000' && c <= '\u206F') // General Punctuation
+                    || c == '\u00A0' || c == '\u1680' || c == '\u3000' // Category 'Z'
+                );
         }
 
         private static bool IsAccentChar(char c)
@@ -264,20 +243,6 @@ namespace Azyobuzi.TwitterUrlExtractor
                 || c == '\u1D2B' || c == '\u1D78' || c == '\uFE2E' || c == '\uFE2F';
         }
 
-        private static bool IsPathEndingChar(char c)
-        {
-            return c < AsciiTableLength
-                ? (AsciiTable[c] & CharType.PathEndingChar) != 0
-                : IsCyrillicScript(c) || IsAccentChar(c);
-        }
-
-        private static bool IsPathChar(char c)
-        {
-            return c < AsciiTableLength
-                ? (AsciiTable[c] & CharType.PathChar) != 0
-                : IsCyrillicScript(c) || IsAccentChar(c);
-        }
-
         private static int EatPath(string text, int startIndex)
         {
             var lastEndingCharIndex = -1;
@@ -287,28 +252,37 @@ namespace Azyobuzi.TwitterUrlExtractor
             for (var i = startIndex; i < text.Length; i++)
             {
                 var c = text[i];
-
-                if (IsPathEndingChar(c))
+                if (c < AsciiTableLength)
+                {
+                    switch (AsciiTable[c] & (CharType.Alnum | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.LParen))
+                    {
+                        case 0:
+                            goto BreakLoop;
+                        case CharType.PathSymbol:
+                            break;
+                        case CharType.LParen:
+                            lastLengthInParen = EatPathInParen(text, i + 1);
+                            if (lastLengthInParen == 0)
+                                goto BreakLoop;
+                            lastParenStartIndex = i;
+                            i += lastLengthInParen;
+                            break;
+                        default:
+                            lastEndingCharIndex = i;
+                            break;
+                    }
+                }
+                else if (IsCyrillicScript(c) || IsAccentChar(c))
                 {
                     lastEndingCharIndex = i;
                 }
-                else if (!IsPathChar(c))
+                else
                 {
-                    if (c == '(')
-                    {
-                        lastLengthInParen = EatPathInParen(text, i + 1);
-                        if (lastLengthInParen == 0)
-                            break;
-                        lastParenStartIndex = i;
-                        i += lastLengthInParen;
-                    }
-                    else
-                    {
-                        break;
-                    }
+                    goto BreakLoop;
                 }
             }
 
+            BreakLoop:
             if ((lastEndingCharIndex == -1 && lastParenStartIndex == startIndex) // 「a.com/(a)」などに対応
                 || (lastEndingCharIndex + 1 == lastParenStartIndex)) // 「twitter.com/test(a).」は「twitter.com/test(a)」まで
             {
@@ -323,37 +297,30 @@ namespace Azyobuzi.TwitterUrlExtractor
             for (var i = startIndex; i < text.Length; i++)
             {
                 var c = text[i];
-                if (!IsPathChar(c))
+                if (c < AsciiTableLength)
                 {
-                    if (c == '(')
+                    switch (AsciiTable[c] & (CharType.Alnum | CharType.PathEndingSymbol | CharType.PathSymbol | CharType.LParen | CharType.RParen))
                     {
-                        var lengthInParen = EatPathInParen(text, i + 1);
-                        if (lengthInParen == 0)
+                        case 0:
+                            goto BreakLoop;
+                        case CharType.LParen:
+                            var lengthInParen = EatPathInParen(text, i + 1);
+                            if (lengthInParen == 0)
+                                goto BreakLoop;
+                            i += lengthInParen;
                             break;
-                        i += lengthInParen;
+                        case CharType.RParen:
+                            return i - startIndex + 1;
                     }
-                    else if (c == ')')
-                    {
-                        return i - startIndex + 1;
-                    }
-                    else
-                    {
-                        break;
-                    }
+                }
+                else if (!IsCyrillicScript(c) && !IsAccentChar(c))
+                {
+                    goto BreakLoop;
                 }
             }
 
+            BreakLoop:
             return 0;
-        }
-
-        private static bool IsQueryEndingChar(char c)
-        {
-            return (AsciiTable[c] & CharType.QueryEndingChar) != 0;
-        }
-
-        private static bool IsQueryCharWithoutEnding(char c)
-        {
-            return (AsciiTable[c] & CharType.QuerySymbol) != 0;
         }
 
         private static int EatQuery(string text, int startIndex)
@@ -363,19 +330,20 @@ namespace Azyobuzi.TwitterUrlExtractor
             for (var i = startIndex; i < text.Length; i++)
             {
                 var c = text[i];
-
                 if (c >= AsciiTableLength) break;
-
-                if (IsQueryEndingChar(c))
+                switch (AsciiTable[c] & (CharType.Alnum | CharType.QueryEndingSymbol | CharType.QuerySymbol))
                 {
-                    lastEndingCharIndex = i;
-                }
-                else if (!IsQueryCharWithoutEnding(c))
-                {
-                    break;
+                    case 0:
+                        goto BreakLoop;
+                    case CharType.QuerySymbol:
+                        break;
+                    default:
+                        lastEndingCharIndex = i;
+                        break;
                 }
             }
 
+            BreakLoop:
             return lastEndingCharIndex == -1 ? 0 : lastEndingCharIndex - startIndex + 1;
         }
 
@@ -644,7 +612,7 @@ namespace Azyobuzi.TwitterUrlExtractor
 
         public List<EntityInfo> Extract(string text)
         {
-            var result = new List<EntityInfo>(4);
+            var result = new List<EntityInfo>();
             if (!string.IsNullOrEmpty(text))
                 this.Extract(text, 0, result);
             return result;
