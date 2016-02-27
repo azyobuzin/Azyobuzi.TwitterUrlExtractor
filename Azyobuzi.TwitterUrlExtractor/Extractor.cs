@@ -13,15 +13,18 @@ namespace Azyobuzi.TwitterUrlExtractor
             SpecialCcTld
         }
 
-        private readonly Dictionary<string, TldType> _tldDictionary = new Dictionary<string, TldType>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<int, TldType> _tldDictionary = new Dictionary<int, TldType>();
         private int _longestTldLength;
         private int _shortestTldLength;
 
         public Extractor(IEnumerable<string> gTlds, IEnumerable<string> ccTlds, IEnumerable<string> specialCcTlds)
         {
-            foreach (var x in gTlds) this.AddTld(x, TldType.GTld);
-            foreach (var x in ccTlds) this.AddTld(x, TldType.CcTld);
-            foreach (var x in specialCcTlds) this.AddTld(x, TldType.SpecialCcTld);
+            if (gTlds != null)
+                foreach (var x in gTlds) this.AddTld(x, TldType.GTld);
+            if (ccTlds != null)
+                foreach (var x in ccTlds) this.AddTld(x, TldType.CcTld);
+            if (specialCcTlds != null)
+                foreach (var x in specialCcTlds) this.AddTld(x, TldType.SpecialCcTld);
         }
 
         public Extractor() : this(DefaultTlds.GTlds, DefaultTlds.CTlds, DefaultTlds.SpecialCcTlds) { }
@@ -33,7 +36,28 @@ namespace Azyobuzi.TwitterUrlExtractor
             else if (tld.Length < this._shortestTldLength)
                 this._shortestTldLength = tld.Length;
 
-            this._tldDictionary[tld] = type;
+            this._tldDictionary[StringGetHashCode(tld)] = type;
+            // ハッシュが被ったら知らん
+        }
+
+        private static int ToLower(char c)
+        {
+            return c <= 'Z' && c >= 'A' ? (c + 32) : c;
+        }
+
+        private static int StringGetHashCode(string str)
+        {
+            var hash1 = 5381;
+            var hash2 = hash1;
+
+            for (var i = 0; i < str.Length;)
+            {
+                hash1 = ((hash1 << 5) + hash1) ^ ToLower(str[i++]);
+                if (i >= str.Length) break;
+                hash2 = ((hash2 << 5) + hash2) ^ ToLower(str[i++]);
+            }
+
+            return hash1 + hash2 * 1566083941;
         }
 
         [Flags]
@@ -362,6 +386,7 @@ namespace Azyobuzi.TwitterUrlExtractor
         private void Extract(string text, int startIndex, List<EntityInfo> result)
         {
             var dots = new MiniList<DotSplitInfo>();
+            var hashCodes = new MiniList<int>();
 
             Start:
             if (startIndex >= text.Length - 2) return;
@@ -508,12 +533,26 @@ namespace Azyobuzi.TwitterUrlExtractor
                 var len = nextIndex - s.DotIndexPlusOne;
                 if (len < this._shortestTldLength) continue;
                 if (len > this._longestTldLength) len = this._longestTldLength;
+                nextIndex = s.DotIndexPlusOne + len;
 
-                for (; len >= 1; len--)
+                hashCodes.Initialize();
+                var hash1 = 5381;
+                var hash2 = hash1;
+
+                for (var j = s.DotIndexPlusOne; j < nextIndex;)
                 {
-                    nextIndex = s.DotIndexPlusOne + len;
+                    hash1 = ((hash1 << 5) + hash1) ^ ToLower(text[j++]);
+                    hashCodes.Add(hash1 + hash2 * 1566083941);
+                    if (j >= nextIndex) break;
+                    hash2 = ((hash2 << 5) + hash2) ^ ToLower(text[j++]);
+                    hashCodes.Add(hash1 + hash2 * 1566083941);
+                }
+
+                for (var j = hashCodes.Count - 1; j >= 0; j--)
+                {
+                    nextIndex = s.DotIndexPlusOne + j + 1;
                     if ((nextIndex == text.Length || !IsAlnumAt(text[nextIndex]))
-                        && this._tldDictionary.TryGetValue(text.Substring(s.DotIndexPlusOne, len), out tldType))
+                        && this._tldDictionary.TryGetValue(hashCodes[j], out tldType))
                     {
                         dotCount = i + 1;
                         goto TldDecided;
