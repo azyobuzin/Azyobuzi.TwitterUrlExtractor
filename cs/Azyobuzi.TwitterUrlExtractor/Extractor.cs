@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Azyobuzi.TwitterUrlExtractor
 {
@@ -13,7 +14,19 @@ namespace Azyobuzi.TwitterUrlExtractor
             SpecialCcTld
         }
 
-        private readonly Dictionary<int, TldType> _tldDictionary = new Dictionary<int, TldType>();
+        private struct TldInfo
+        {
+            public TldType Type;
+            public int Length;
+
+            public TldInfo(TldType type, int length)
+            {
+                this.Type = type;
+                this.Length = length;
+            }
+        }
+
+        private readonly Dictionary<int, TldInfo> _tldDictionary = new Dictionary<int, TldInfo>();
         private int _longestTldLength;
         private int _shortestTldLength;
 
@@ -21,22 +34,31 @@ namespace Azyobuzi.TwitterUrlExtractor
         {
             if (gTlds != null)
                 foreach (var x in gTlds) this.AddTld(x, TldType.GTld);
+
+            var s = specialCcTlds != null ? specialCcTlds.ToArray() : new string[0];
+            foreach (var x in s) this.AddTld(x, TldType.SpecialCcTld);
+
             if (ccTlds != null)
-                foreach (var x in ccTlds) this.AddTld(x, TldType.CcTld);
-            if (specialCcTlds != null)
-                foreach (var x in specialCcTlds) this.AddTld(x, TldType.SpecialCcTld);
+            {
+                foreach (var x in ccTlds)
+                {
+                    if (Array.IndexOf(s, x) == -1)
+                        this.AddTld(x, TldType.CcTld);
+                }
+            }
         }
 
         public Extractor() : this(DefaultTlds.GTlds, DefaultTlds.CTlds, DefaultTlds.SpecialCcTlds) { }
 
         private void AddTld(string tld, TldType type)
         {
-            if (tld.Length > this._longestTldLength)
-                this._longestTldLength = tld.Length;
-            else if (tld.Length < this._shortestTldLength)
-                this._shortestTldLength = tld.Length;
+            var len = tld.Length;
+            if (len > this._longestTldLength)
+                this._longestTldLength = len;
+            else if (len < this._shortestTldLength)
+                this._shortestTldLength = len;
 
-            this._tldDictionary[StringGetHashCode(tld)] = type;
+            this._tldDictionary.Add(StringGetHashCode(tld), new TldInfo(type, len));
             // ハッシュが被ったら知らん
         }
 
@@ -70,7 +92,7 @@ namespace Azyobuzi.TwitterUrlExtractor
             Alnum = Alphabet | Number,
             AlnumAt = Alnum | At,
             NotPrecedingSymbol = 1 << 3,
-            NotPrecedingChar = AlnumAt | NotPrecedingSymbol,
+            NotPrecedingChar = Alnum | NotPrecedingSymbol,
             PathEndingSymbol = 1 << 4,
             PathSymbol = 1 << 5,
             QueryEndingSymbol = 1 << 6,
@@ -146,7 +168,7 @@ namespace Azyobuzi.TwitterUrlExtractor
             CharType.PathEndingSymbol | CharType.QueryEndingSymbol, // =
             CharType.None, // >
             CharType.QuerySymbol, // ?
-            CharType.At | CharType.PathSymbol | CharType.QuerySymbol, // @
+            CharType.At | CharType.NotPrecedingSymbol | CharType.PathSymbol | CharType.QuerySymbol, // @
             CharType.Alphabet, // A
             CharType.Alphabet, // B
             CharType.Alphabet, // C
@@ -236,11 +258,6 @@ namespace Azyobuzi.TwitterUrlExtractor
         private static bool IsUnicodeDomainChar(char c)
         {
             return c > 0x7F && !IsAccentChar(c);
-        }
-
-        private static bool IsNum(char c)
-        {
-            return c < AsciiTableLength && (AsciiTable[c] & CharType.Number) != 0;
         }
 
         private static bool IsAlnumAt(char c)
@@ -371,22 +388,11 @@ namespace Azyobuzi.TwitterUrlExtractor
             return lastEndingCharIndex == -1 ? 0 : lastEndingCharIndex - startIndex + 1;
         }
 
-        private struct DotSplitInfo
+        private void Extract(string text, List<EntityInfo> result)
         {
-            public int DotIndexPlusOne;
-            public bool HasAnyUnicodeCharsBetweenFirstDotAndThis;
-
-            public DotSplitInfo(int dotIndex, bool hasAnyUnicodeCharsBetweenFirstDotAndThis)
-            {
-                this.DotIndexPlusOne = dotIndex + 1;
-                this.HasAnyUnicodeCharsBetweenFirstDotAndThis = hasAnyUnicodeCharsBetweenFirstDotAndThis;
-            }
-        }
-
-        private void Extract(string text, int startIndex, List<EntityInfo> result)
-        {
-            var dots = new MiniList<DotSplitInfo>();
+            var dots = new MiniList<int>();
             var hashCodes = new MiniList<int>();
+            var startIndex = 0;
 
             Start:
             if (startIndex >= text.Length - 2) return;
@@ -427,18 +433,29 @@ namespace Azyobuzi.TwitterUrlExtractor
                     // スキーム判定
                     if (i >= 6)
                     {
-                        precedingIndex = i - 7;
-                        hasScheme = text.Substring(i - 6, 6).Equals("http:/", StringComparison.OrdinalIgnoreCase)
-                            && (i == 6 || IsPrecedingChar(text[precedingIndex]));
+                        var j = i - 1;
+                        if (text[j--] == '/' && text[j--] == ':')
+                        {
+                            switch (ToLower(text[j--]))
+                            {
+                                case 's':
+                                    if (i >= 7 && ToLower(text[j--]) == 'p')
+                                        goto case 'p';
+                                    break;
+                                case 'p':
+                                    if (ToLower(text[j--]) == 't' && ToLower(text[j--]) == 't' && ToLower(text[j--]) == 'h')
+                                    {
+                                        if (j < 0 || IsPrecedingChar(text[j]))
+                                        {
+                                            precedingIndex = j;
+                                            hasScheme = true;
+                                            goto BreakSchemeCheck;
+                                        }
+                                    }
+                                    break;
+                            }
+                        }
                     }
-                    if (!hasScheme && i >= 7)
-                    {
-                        precedingIndex = i - 8;
-                        hasScheme = text.Substring(i - 7, 7).Equals("https:/", StringComparison.OrdinalIgnoreCase)
-                            && (i == 7 || IsPrecedingChar(text[precedingIndex]));
-                    }
-
-                    if (hasScheme) break;
 
                     goto GoToNextToDot;
                 }
@@ -477,9 +494,10 @@ namespace Azyobuzi.TwitterUrlExtractor
             if ((precedingIndex == -1 && startIndex != 0) || x == '-' || x == '_')
                 goto GoToNextToDot;
 
+            BreakSchemeCheck:
             // ホスト部分を最後まで読み取る
             dots.Initialize();
-            dots.Add(new DotSplitInfo(dotIndex, false));
+            dots.Add(dotIndex + 1);
             var hasUnicodeCharAfterDot = false;
             var nextIndex = text.Length;
             for (var i = dotIndex + 1; i < text.Length; i++)
@@ -510,7 +528,7 @@ namespace Azyobuzi.TwitterUrlExtractor
                         break;
                     }
 
-                    dots.Add(new DotSplitInfo(i, hasUnicodeCharAfterDot));
+                    dots.Add(i + 1);
                     continue;
                 }
 
@@ -525,21 +543,22 @@ namespace Azyobuzi.TwitterUrlExtractor
             }
 
             // TLD 検証
-            TldType tldType;
+            TldInfo tldInfo;
             int dotCount;
             for (var i = dots.Count - 1; i >= 0; i--)
             {
-                var s = dots[i];
-                var len = nextIndex - s.DotIndexPlusOne;
+                var dotIndexPlusOne = dots[i];
+                var len = nextIndex - dotIndexPlusOne;
                 if (len < this._shortestTldLength) continue;
                 if (len > this._longestTldLength) len = this._longestTldLength;
-                nextIndex = s.DotIndexPlusOne + len;
+                nextIndex = dotIndexPlusOne + len;
 
+                // ループ回数軽減のため、その場でハッシュ値を求める
                 hashCodes.Initialize();
                 var hash1 = 5381;
                 var hash2 = hash1;
 
-                for (var j = s.DotIndexPlusOne; j < nextIndex;)
+                for (var j = dotIndexPlusOne; j < nextIndex;)
                 {
                     hash1 = ((hash1 << 5) + hash1) ^ ToLower(text[j++]);
                     hashCodes.Add(hash1 + hash2 * 1566083941);
@@ -550,9 +569,10 @@ namespace Azyobuzi.TwitterUrlExtractor
 
                 for (var j = hashCodes.Count - 1; j >= 0; j--)
                 {
-                    nextIndex = s.DotIndexPlusOne + j + 1;
+                    nextIndex = dotIndexPlusOne + j + 1;
                     if ((nextIndex == text.Length || !IsAlnumAt(text[nextIndex]))
-                        && this._tldDictionary.TryGetValue(hashCodes[j], out tldType))
+                        && this._tldDictionary.TryGetValue(hashCodes[j], out tldInfo)
+                        && nextIndex - dotIndexPlusOne == tldInfo.Length) // ハッシュ衝突の簡易チェック
                     {
                         dotCount = i + 1;
                         goto TldDecided;
@@ -564,12 +584,12 @@ namespace Azyobuzi.TwitterUrlExtractor
 
             TldDecided:
             // ccTLD のサブドメインなしはスキーム必須
-            if (!hasScheme && tldType == TldType.CcTld
+            if (!hasScheme && tldInfo.Type == TldType.CcTld
                 && (dotCount == 1 && (nextIndex >= text.Length || text[nextIndex] != '/')))
                 goto GoToNextIndex;
 
             // サブドメインには _ を使えるがドメインには使えない
-            for (var i = dots.Last.DotIndexPlusOne - 2; i > precedingIndex; i--)
+            for (var i = dots.Last - 2; i > precedingIndex; i--)
             {
                 var c = text[i];
                 if (c == '.' || c == '/') break;
@@ -588,7 +608,8 @@ namespace Azyobuzi.TwitterUrlExtractor
                 var portNumberLength = 0;
                 for (; nextIndex < text.Length; nextIndex++)
                 {
-                    if (IsNum(text[nextIndex]))
+                    var c = text[nextIndex];
+                    if (c <= '9' && c >= '0')
                         portNumberLength++;
                     else
                         break;
@@ -607,12 +628,12 @@ namespace Azyobuzi.TwitterUrlExtractor
             // パス
             if (text[nextIndex] == '/')
             {
-                nextIndex++;
-
                 // https?://t.co/xxxxxxxxxx だけ特別扱い
-                var strBeforePath = text.Substring(urlStartIndex, nextIndex - 1 - urlStartIndex);
-                if ((strBeforePath.Equals("https://t.co", StringComparison.OrdinalIgnoreCase)
-                    || strBeforePath.Equals("http://t.co", StringComparison.OrdinalIgnoreCase))
+                var len = nextIndex - urlStartIndex;
+                nextIndex++;
+                if (hasScheme && (len == 11 || len == 12)
+                    && ToLower(text[nextIndex - 2]) == 'o' && ToLower(text[nextIndex - 3]) == 'c'
+                    && text[nextIndex - 4] == '.' && ToLower(text[nextIndex - 5]) == 't' && text[nextIndex - 6] == '/'
                     && nextIndex < text.Length && IsAlnum(text[nextIndex]))
                 {
                     nextIndex++;
@@ -653,7 +674,7 @@ namespace Azyobuzi.TwitterUrlExtractor
         {
             var result = new List<EntityInfo>();
             if (!string.IsNullOrEmpty(text))
-                this.Extract(text, 0, result);
+                this.Extract(text, result);
             return result;
         }
     }

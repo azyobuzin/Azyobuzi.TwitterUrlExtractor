@@ -32,7 +32,7 @@ twitter.com/abcde
 */
 ```
 
-Note that the constructor of Extractor is little heavy, so you should reuse one instance.
+Note that the constructor of Extractor is a little heavy, so you should reuse one instance.
 
 ## Count the tweet length
 ```csharp
