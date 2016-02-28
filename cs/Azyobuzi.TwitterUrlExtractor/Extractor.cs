@@ -28,7 +28,7 @@ namespace Azyobuzi.TwitterUrlExtractor
 
         private readonly Dictionary<int, TldInfo> _tldDictionary = new Dictionary<int, TldInfo>();
         private int _longestTldLength;
-        private int _shortestTldLength;
+        private int _shortestTldLength = int.MaxValue;
 
         public Extractor(IEnumerable<string> gTlds, IEnumerable<string> ccTlds, IEnumerable<string> specialCcTlds)
         {
