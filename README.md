@@ -1,3 +1,8 @@
+# ToriatamaText
+Azyobuzi.TwitterUrlExtractor は ToriatamaText に進化して、 URL 以外の取得にも対応しようと頑張っています。
+
+https://github.com/azyobuzin/ToriatamaText
+
 # Azyobuzi.TwitterUrlExtractor
 The fastest URL extractor (I think) for Twitter clients.
 
